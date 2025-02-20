@@ -919,7 +919,7 @@ def build_single_model_ui(models, add_promotion_links=False):
     )
 
     notice_markdown = f"""
-# 🏔️ Chatbot Arena (formerly LMSYS): Free AI Chat to Compare & Test Best AI Chatbots
+# ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 {promotion}
 """
 

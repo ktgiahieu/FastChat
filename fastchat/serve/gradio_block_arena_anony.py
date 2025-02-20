@@ -10,6 +10,9 @@ import re
 import gradio as gr
 import numpy as np
 
+import os
+from fpdf import FPDF
+
 from fastchat.constants import (
     MODERATION_MSG,
     CONVERSATION_LIMIT_MSG,
@@ -39,6 +42,31 @@ from fastchat.utils import (
     build_logger,
     moderation_filter,
 )
+
+def save_uploaded_file_as_pdf(uploaded_file):
+    if uploaded_file is None:
+        return "No file uploaded."
+
+    save_path = os.path.join("uploads", uploaded_file.name)  
+    pdf_path = os.path.splitext(save_path)[0] + ".pdf"   
+
+    os.makedirs("uploads", exist_ok=True)   
+    with open(save_path, "wb") as f:
+        f.write(uploaded_file.read())
+
+    if uploaded_file.name.endswith(".txt"):  
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        with open(save_path, "r") as txt_file:
+            for line in txt_file:
+                pdf.cell(200, 10, txt=line, ln=True)
+
+        pdf.output(pdf_path)
+
+    return f"File saved: {pdf_path}"
+
 
 logger = build_logger("gradio_web_server_multi", "gradio_web_server_multi.log")
 
@@ -443,21 +471,11 @@ def bot_response_multi(
 
 def build_side_by_side_ui_anony(models):
     notice_markdown = f"""
-# ⚔️  Chatbot Arena (formerly LMSYS): Free AI Chat to Compare & Test Best AI Chatbots
-[Blog](https://blog.lmarena.ai/blog/2023/arena/) | [GitHub](https://github.com/lm-sys/FastChat) | [Paper](https://arxiv.org/abs/2403.04132) | [Dataset](https://github.com/lm-sys/FastChat/blob/main/docs/dataset_release.md) | [Twitter](https://twitter.com/lmsysorg) | [Discord](https://discord.gg/6GXcFg3TH8) | [Kaggle Competition](https://www.kaggle.com/competitions/lmsys-chatbot-arena)
-
-{SURVEY_LINK}
-
-## 📣 News
-- Chatbot Arena now supports images in beta. Check it out [here](https://lmarena.ai/?vision).
+# ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
 ## 📜 How It Works
-- **Blind Test**: Ask any question to two anonymous AI chatbots (ChatGPT, Gemini, Claude, Llama, and more).
-- **Vote for the Best**: Choose the best response. You can keep chatting until you find a winner.
-- **Play Fair**: If AI identity reveals, your vote won't count.
-
-## 🏆 Chatbot Arena LLM [Leaderboard](https://lmarena.ai/leaderboard)
-- Backed by over **1,000,000+** community votes, our platform ranks the best LLM and AI chatbots. Explore the top AI models on our LLM [leaderboard](https://lmarena.ai/leaderboard)!
+- **Blind Test**: Ask any question to two anonymous AI chatbots.
+- **Vote for the Best**: Choose the best response.
 
 ## 👇 Chat now!
 """
@@ -551,6 +569,10 @@ def build_side_by_side_ui_anony(models):
             label="Max output tokens",
         )
 
+        # file_upload = gr.File(label="Upload File", file_types=[".txt", ".pdf"])
+        # save_button = gr.Button(value="Save as PDF", variant="primary")
+        # output_text = gr.Textbox()
+
     gr.Markdown(acknowledgment_md, elem_id="ack_markdown")
 
     # Register listeners
@@ -562,6 +584,14 @@ def build_side_by_side_ui_anony(models):
         regenerate_btn,
         clear_btn,
     ]
+     
+
+    # save_button.click(
+    #     save_uploaded_file_as_pdf, 
+    #     inputs=file_upload, 
+    #     outputs=output_text
+    # )
+    
     leftvote_btn.click(
         leftvote_last_response,
         states + model_selectors,

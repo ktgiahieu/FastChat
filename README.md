@@ -1,12 +1,16 @@
-# LM-Arena demo for checklist assistant
+# ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
 **TLDR:** [Install](#install) then run:
 
-- In 1 terminal:
+- In terminal 1:
 
+```bash
 `python3 -m fastchat.serve.controller`
+```
 
-- Create a JSON configuration file `api_endpoint.json` with the api endpoints of the models you want to serve. **Note, ask me or Ihsan the API keys by email**. For example:
+- Create a JSON configuration file `api_endpoint.json` with the api endpoints of the models you want to serve. For example:
+
+**Note, ask me or Ihsan the API keys by email**
 
 ```
 {
@@ -41,10 +45,12 @@
 }
 ```
 
-- Add the sampling rate in the `SAMPLING_WEIGHTS` dictionary in `fastchat/serve/gradio_block_arena_anony.py` .
-- In 2nd terminal:
+- Add the sampling rate in the `SAMPLING_WEIGHTS` dictionary in `fastchat/serve/gradio_block_arena_anony.py`.
 
+- In terminal 2:
+```bash
 `python3 -m fastchat.serve.gradio_web_server_multi --register-api-endpoint-file api_endpoint.json`
+```
 
 ## Contents
 

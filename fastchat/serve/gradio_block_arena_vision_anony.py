@@ -377,20 +377,11 @@ def add_text(
 
 def build_side_by_side_vision_ui_anony(context: Context, random_questions=None):
     notice_markdown = f"""
-# ⚔️  Chatbot Arena (formerly LMSYS): Free AI Chat to Compare & Test Best AI Chatbots
-[Blog](https://blog.lmarena.ai/blog/2023/arena/) | [GitHub](https://github.com/lm-sys/FastChat) | [Paper](https://arxiv.org/abs/2403.04132) | [Dataset](https://github.com/lm-sys/FastChat/blob/main/docs/dataset_release.md) | [Twitter](https://twitter.com/lmsysorg) | [Discord](https://discord.gg/6GXcFg3TH8) | [Kaggle Competition](https://www.kaggle.com/competitions/lmsys-chatbot-arena)
-
-{SURVEY_LINK}
+# ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
 ## 📜 How It Works
-- **Blind Test**: Ask any question to two anonymous AI chatbots (ChatGPT, Gemini, Claude, Llama, and more).
-- **Vote for the Best**: Choose the best response. You can keep chatting until you find a winner.
-- **Play Fair**: If AI identity reveals, your vote won't count.
-
-**NEW** Image Support: <span style='color: #DE3163; font-weight: bold'>Upload an image</span> to unlock the multimodal arena!
-
-## 🏆 Chatbot Arena LLM [Leaderboard](https://lmarena.ai/leaderboard)
-- Backed by over **1,000,000+** community votes, our platform ranks the best LLM and AI chatbots. Explore the top AI models on our LLM [leaderboard](https://lmarena.ai/leaderboard)!
+- **Blind Test**: Ask any question to two anonymous AI chatbots.
+- **Vote for the Best**: Choose the best response.
 
 ## 👇 Chat now!
 """

@@ -43,29 +43,39 @@ from fastchat.utils import (
     moderation_filter,
 )
 
+
 def save_uploaded_file_as_pdf(uploaded_file):
     if uploaded_file is None:
         return "No file uploaded."
 
-    save_path = os.path.join("uploads", uploaded_file.name)  
-    pdf_path = os.path.splitext(save_path)[0] + ".pdf"   
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(script_dir, "files")
+    os.makedirs(save_dir, exist_ok=True)
 
-    os.makedirs("uploads", exist_ok=True)   
+    if hasattr(uploaded_file, "name"):
+        file_name = os.path.basename(uploaded_file.name)
+    elif isinstance(uploaded_file, dict) and "name" in uploaded_file:
+        file_name = os.path.basename(uploaded_file["name"])
+    else:
+        file_name = "uploaded_file.pdf"   
+    save_path = os.path.join(save_dir, file_name)
+
+    if hasattr(uploaded_file, "read"):
+        data = uploaded_file.read()
+    elif isinstance(uploaded_file, dict):
+        data = uploaded_file.get("data", b"")
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+    elif isinstance(uploaded_file, str):
+        with open(uploaded_file, "rb") as f:
+            data = f.read()
+    else:
+        return "Unsupported file format."
+
     with open(save_path, "wb") as f:
-        f.write(uploaded_file.read())
+        f.write(data)
+    return f"File saved: {save_path}"
 
-    if uploaded_file.name.endswith(".txt"):  
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-
-        with open(save_path, "r") as txt_file:
-            for line in txt_file:
-                pdf.cell(200, 10, txt=line, ln=True)
-
-        pdf.output(pdf_path)
-
-    return f"File saved: {pdf_path}"
 
 
 logger = build_logger("gradio_web_server_multi", "gradio_web_server_multi.log")
@@ -471,20 +481,24 @@ def bot_response_multi(
 
 def build_side_by_side_ui_anony(models):
     notice_markdown = f"""
-# ⚔️ [DEMO] LLM-Arena for Checklist Assistant
+    # ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
-## 📜 How It Works
-- **Blind Test**: Ask any question to two anonymous AI chatbots.
-- **Vote for the Best**: Choose the best response.
+    ## 📜 How It Works
+    - **Blind Test**: Ask any question to two anonymous AI chatbots.
+    - **Vote for the Best**: Choose the best response.
 
-## 👇 Chat now!
-"""
-
+    ## 👇 Chat now!
+    """
+    
     states = [gr.State() for _ in range(num_sides)]
     model_selectors = [None] * num_sides
     chatbots = [None] * num_sides
 
     gr.Markdown(notice_markdown, elem_id="notice_markdown")
+
+    file_upload = gr.File(label="Please upload your paper", file_types=[".pdf"])
+    save_button = gr.Button(value="Upload PDF", variant="primary")
+    output_text = gr.Textbox(label="Parsed paper output")
 
     with gr.Group(elem_id="share-region-anony"):
         with gr.Accordion(
@@ -542,7 +556,7 @@ def build_side_by_side_ui_anony(models):
         clear_btn = gr.Button(value="🎲 New Round", interactive=False)
         regenerate_btn = gr.Button(value="🔄  Regenerate", interactive=False)
         share_btn = gr.Button(value="📷  Share")
-
+    
     with gr.Accordion("Parameters", open=False, visible=False) as parameter_row:
         temperature = gr.Slider(
             minimum=0.0,
@@ -569,10 +583,6 @@ def build_side_by_side_ui_anony(models):
             label="Max output tokens",
         )
 
-        # file_upload = gr.File(label="Upload File", file_types=[".txt", ".pdf"])
-        # save_button = gr.Button(value="Save as PDF", variant="primary")
-        # output_text = gr.Textbox()
-
     gr.Markdown(acknowledgment_md, elem_id="ack_markdown")
 
     # Register listeners
@@ -586,11 +596,11 @@ def build_side_by_side_ui_anony(models):
     ]
      
 
-    # save_button.click(
-    #     save_uploaded_file_as_pdf, 
-    #     inputs=file_upload, 
-    #     outputs=output_text
-    # )
+    save_button.click(
+        save_uploaded_file_as_pdf, 
+        inputs=file_upload, 
+        outputs=output_text
+    )
     
     leftvote_btn.click(
         leftvote_last_response,

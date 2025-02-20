@@ -8,6 +8,9 @@ import os
 import time
 from typing import List, Union
 
+import os
+from fpdf import FPDF
+
 import gradio as gr
 import numpy as np
 
@@ -61,6 +64,42 @@ from fastchat.utils import (
     moderation_filter,
     image_moderation_filter,
 )
+
+
+
+def save_uploaded_file_as_pdf(uploaded_file):
+    if uploaded_file is None:
+        return "No file uploaded."
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(script_dir, "files")
+    os.makedirs(save_dir, exist_ok=True)
+
+    if hasattr(uploaded_file, "name"):
+        file_name = os.path.basename(uploaded_file.name)
+    elif isinstance(uploaded_file, dict) and "name" in uploaded_file:
+        file_name = os.path.basename(uploaded_file["name"])
+    else:
+        file_name = "uploaded_file.pdf"   
+    save_path = os.path.join(save_dir, file_name)
+
+    if hasattr(uploaded_file, "read"):
+        data = uploaded_file.read()
+    elif isinstance(uploaded_file, dict):
+        data = uploaded_file.get("data", b"")
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+    elif isinstance(uploaded_file, str):
+        with open(uploaded_file, "rb") as f:
+            data = f.read()
+    else:
+        return "Unsupported file format."
+
+    with open(save_path, "wb") as f:
+        f.write(data)
+    return f"File saved: {save_path}"
+
+
 
 
 logger = build_logger("gradio_web_server_multi", "gradio_web_server_multi.log")
@@ -304,27 +343,24 @@ def add_text(
 
 def build_side_by_side_vision_ui_named(context: Context, random_questions=None):
     notice_markdown = f"""
-# ⚔️  Chatbot Arena (formerly LMSYS): Free AI Chat to Compare & Test Best AI Chatbots
-[Blog](https://blog.lmarena.ai/blog/2023/arena/) | [GitHub](https://github.com/lm-sys/FastChat) | [Paper](https://arxiv.org/abs/2403.04132) | [Dataset](https://github.com/lm-sys/FastChat/blob/main/docs/dataset_release.md) | [Twitter](https://twitter.com/lmsysorg) | [Discord](https://discord.gg/6GXcFg3TH8) | [Kaggle Competition](https://www.kaggle.com/competitions/lmsys-chatbot-arena)
+    # ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
-{SURVEY_LINK}
+    ## 📜 How It Works
+    - **Blind Test**: Ask any question to two anonymous AI chatbots.
+    - **Vote for the Best**: Choose the best response.
 
-## 📜 How It Works
-- Ask any question to two chosen models (e.g., ChatGPT, Gemini, Claude, Llama) and vote for the better one!
-- You can chat for multiple turns until you identify a winner.
-
-Note: You can only chat with <span style='color: #DE3163; font-weight: bold'>one image per conversation</span>. You can upload images less than 15MB. Click the "Random Example" button to chat with a random image.
-
-**❗️ For research purposes, we log user prompts and images, and may release this data to the public in the future. Please do not upload any confidential or personal information.**
-
-## 🤖 Choose two models to compare
-"""
+    ## 👇 Chat now!
+    """
 
     states = [gr.State() for _ in range(num_sides)]
     model_selectors = [None] * num_sides
     chatbots = [None] * num_sides
 
     notice = gr.Markdown(notice_markdown, elem_id="notice_markdown")
+    
+    file_upload = gr.File(label="Please upload your paper", file_types=[".pdf"])
+    save_button = gr.Button(value="Upload PDF", variant="primary")
+    output_text = gr.Textbox(label="Parsed paper output")
 
     text_and_vision_models = context.models
     context_state = gr.State(context)
@@ -459,6 +495,14 @@ Note: You can only chat with <span style='color: #DE3163; font-weight: bold'>one
         regenerate_btn,
         clear_btn,
     ]
+    
+    save_button.click(
+        save_uploaded_file_as_pdf, 
+        inputs=file_upload, 
+        outputs=output_text
+    )
+        
+        
     leftvote_btn.click(
         leftvote_last_response,
         states + model_selectors,

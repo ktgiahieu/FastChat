@@ -7,6 +7,7 @@ import json
 import os
 import time
 from typing import List, Union
+import fitz
 
 import os
 from fpdf import FPDF
@@ -66,7 +67,13 @@ from fastchat.utils import (
 )
 
 
-
+def get_pdf_text(pdf_paper):
+        paper_text = ""
+        with fitz.open(pdf_paper) as doc:
+            for page in doc:
+                paper_text += page.get_text()
+        return paper_text
+    
 def save_uploaded_file_as_pdf(uploaded_file):
     if uploaded_file is None:
         return "No file uploaded."

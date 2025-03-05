@@ -198,12 +198,12 @@ window.__gradio_mode__ = "app";
     ) as demo:
         with gr.Tabs() as inner_tabs:
             if args.vision_arena:
-                with gr.Tab("⚔️ Arena (battle)", id=0) as arena_tab:
-                    arena_tab.select(None, None, None, js=load_js)
-                    side_by_side_anony_list = build_side_by_side_vision_ui_anony(
-                        context,
-                        random_questions=args.random_questions,
-                    )
+                # with gr.Tab("⚔️ Arena (battle)", id=0) as arena_tab:
+                #     arena_tab.select(None, None, None, js=load_js)
+                #     side_by_side_anony_list = build_side_by_side_vision_ui_anony(
+                #         context,
+                #         random_questions=args.random_questions,
+                #     )
                 with gr.Tab("⚔️ Arena (side-by-side)", id=1) as side_by_side_tab:
                     side_by_side_tab.select(None, None, None, js=alert_js)
                     side_by_side_named_list = build_side_by_side_vision_ui_named(
@@ -219,17 +219,17 @@ window.__gradio_mode__ = "app";
                     )
 
             else:
-                with gr.Tab("⚔️ Arena (battle)", id=0) as arena_tab:
-                    arena_tab.select(None, None, None, js=load_js)
-                    side_by_side_anony_list = build_side_by_side_ui_anony(
-                        context.all_text_models
-                    )
+                # with gr.Tab("⚔️ Arena (battle)", id=0) as arena_tab:
+                #     arena_tab.select(None, None, None, js=load_js)
+                #     side_by_side_anony_list = build_side_by_side_ui_anony(
+                #         context.all_text_models
+                #     )
 
                 with gr.Tab("⚔️ Arena (side-by-side)", id=1) as side_by_side_tab:
                     side_by_side_tab.select(None, None, None, js=alert_js)
                     side_by_side_named_list = build_side_by_side_ui_named(
                         context.text_models
-                    )
+                    ) 
 
                 with gr.Tab("💬 Direct Chat", id=2) as direct_tab:
                     direct_tab.select(None, None, None, js=alert_js)
@@ -239,7 +239,7 @@ window.__gradio_mode__ = "app";
 
             demo_tabs = (
                 [inner_tabs]
-                + side_by_side_anony_list
+                # + side_by_side_anony_list
                 + side_by_side_named_list
                 + single_model_list
             )

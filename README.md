@@ -5,7 +5,7 @@
 - In terminal 1:
 
 ```bash
-`python3 -m fastchat.serve.controller`
+python -m fastchat.serve.controller
 ```
 
 - Create a JSON configuration file `api_endpoint.json` with the api endpoints of the models you want to serve. For example:
@@ -49,7 +49,7 @@
 
 - In terminal 2:
 ```bash
-`python3 -m fastchat.serve.gradio_web_server_multi --register-api-endpoint-file api_endpoint.json`
+python -m fastchat.serve.gradio_web_server_multi --register-api-endpoint-file api_endpoint.json
 ```
 
 ## Contents

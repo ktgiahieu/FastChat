@@ -215,7 +215,11 @@ def share_click(state0, state1, model_selector0, model_selector1, request: gr.Re
 
 SAMPLING_WEIGHTS = {
     "Checklist-GPT-4-0125-Preview": 1,
+    "Checklist-GPT-4o-0513": 1,
+    "Checklist-GPT-4o-mini": 1,
     "Checklist-GPT-o1": 1,
+    "Checklist-GPT-o1-mini": 1,
+    "Checklist-GPT-o3-mini": 1,
 }
 
 # target model sampling weights will be boosted.

@@ -222,7 +222,6 @@ def get_paper_chunks(paper_text):
 
 def get_single_question_LLM_feedback(paper_prompt, model_name):
     config = get_api_config(model_name)
-
     api_base = config["api_base"]
     api_key = config["api_key"]
     api_version = config["azure_api_version"]
@@ -237,17 +236,15 @@ def get_single_question_LLM_feedback(paper_prompt, model_name):
     max_tokens = 1000
     n = 1
     number_of_times_question_processed = 0
-    review_is_empty = True
-    error_in_processing_question = False
+    error_in_processing_question = True
 
     score = -1
     llm_review = ""
-
-    while (review_is_empty or error_in_processing_question) and number_of_times_question_processed < 3:
+    while error_in_processing_question and number_of_times_question_processed < 3:
         number_of_times_question_processed += 1
 
         if number_of_times_question_processed != 1:
-            print("[!] Reprocessing this question!")
+            print(f"[!] Reprocessing this question!")
 
         try:
             user_prompt = {
@@ -272,7 +269,7 @@ def get_single_question_LLM_feedback(paper_prompt, model_name):
             print(f"[-] {llm_review}")
             continue
 
-    return llm_review, score, "GPT"
+    return llm_review, score, model_name
 
 def get_LLM_feedback(paper, checklist_df, model):
 
@@ -280,7 +277,7 @@ def get_LLM_feedback(paper, checklist_df, model):
 
         question_number = index + 1
 
-        print(f"[*] Processing Question # {question_number}")
+        print(f"[{model}][*] Processing Question # {question_number}")
 
         q = row["Question"]
         a = row["Answer"]
@@ -302,20 +299,18 @@ def get_LLM_feedback(paper, checklist_df, model):
         paper_prompt = paper_prompt.replace("{j}", j)
         paper_prompt = paper_prompt.replace("{g}", g)
         paper_prompt = paper_prompt.replace("{paper}", paper)
-        question_score, question_review, llm = get_single_question_LLM_feedback(paper_prompt, model)
-
+        question_review,question_score , llm = get_single_question_LLM_feedback(paper_prompt, model)
         checklist_df.loc[index, 'Review'] = question_review
         checklist_df.loc[index, 'Score'] = question_score
         checklist_df.loc[index, 'LLM'] = llm
 
-        print(f"[+] Question # {question_number}")
+        print(f"[{model}][+] Question # {question_number}")
 
     return checklist_df
 
-
 def save_uploaded_file_as_pdf(uploaded_file): 
     global model_states
-    
+    print(model_states)
     if uploaded_file is None:
         return "No file uploaded."
 
@@ -365,7 +360,11 @@ def save_uploaded_file_as_pdf(uploaded_file):
         future2 = executor.submit(get_LLM_feedback, paper["paper"], paper["checklist_df"], model_states[1])
         answer1 = future1.result()
         answer2 = future2.result()
-    return str(answer1), str(answer2)
+    # answer1 = get_LLM_feedback(paper["paper"], paper["checklist_df"], model_states[0])
+    # answer2 = get_LLM_feedback(paper["paper"], paper["checklist_df"], model_states[1])
+    print(answer1['LLM'].tolist())
+    print(answer2['LLM'].tolist())
+    return str(answer1) +"\n\n Make the format better", str(answer2) +"\n\n Make the format better"
 
 
 logger = build_logger("gradio_web_server_multi", "gradio_web_server_multi.log")
@@ -484,11 +483,10 @@ def share_click(state0, state1, model_selector0, model_selector1, request: gr.Re
         )
 
 
-def add_text(
-    state0, state1, model_selector0, model_selector1, text, request: gr.Request
-):
-    ip = get_ip(request)
-    logger.info(f"add_text (named). ip: {ip}. len: {len(text)}")
+def add_text(state0, state1, model_selector0, model_selector1, text, output_text_left, output_text_right, request: gr.Request):
+
+    # ip = get_ip(request)
+    # logger.info(f"add_text (named). ip: {ip}. len: {len(text)}")
     states = [state0, state1]
     model_selectors = [model_selector0, model_selector1]
 
@@ -503,11 +501,8 @@ def add_text(
         return (
             states
             + [x.to_gradio_chatbot() for x in states]
-            + ["", None]
-            + [
-                no_change_btn,
-            ]
-            * 6
+            + [output_text_left, output_text_right]
+            + [no_change_btn,] * 6
         )
 
     model_list = [states[i].model_name for i in range(num_sides)]
@@ -518,24 +513,22 @@ def add_text(
     )
     flagged = moderation_filter(all_conv_text, model_list)
     if flagged:
-        logger.info(f"violate moderation (named). ip: {ip}. text: {text}")
+        # logger.info(f"violate moderation (named). ip: {ip}. text: {text}")
         # overwrite the original text
         text = MODERATION_MSG
 
     conv = states[0].conv
     if (len(conv.messages) - conv.offset) // 2 >= CONVERSATION_TURN_LIMIT:
-        logger.info(f"conversation turn limit. ip: {ip}. text: {text}")
+        # logger.info(f"conversation turn limit. ip: {ip}. text: {text}")
         for i in range(num_sides):
             states[i].skip_next = True
         return (
             states
             + [x.to_gradio_chatbot() for x in states]
-            + [CONVERSATION_LIMIT_MSG]
-            + [
-                no_change_btn,
-            ]
-            * 6
+            + [CONVERSATION_LIMIT_MSG, CONVERSATION_LIMIT_MSG]
+            + [no_change_btn,] * 6
         )
+
 
     text = text[:INPUT_CHAR_LEN_LIMIT]  # Hard cut-off
     for i in range(num_sides):
@@ -546,11 +539,8 @@ def add_text(
     return (
         states
         + [x.to_gradio_chatbot() for x in states]
-        + [""]
-        + [
-            disable_btn,
-        ]
-        * 6
+        + [output_text_left, output_text_right]
+        + [disable_btn,] * 6
     )
 
 
@@ -645,6 +635,7 @@ def flash_buttons():
 
 
 def build_side_by_side_ui_named(models):
+    global model_states
     notice_markdown = f"""
     # ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
@@ -662,14 +653,13 @@ def build_side_by_side_ui_named(models):
     notice = gr.Markdown(notice_markdown, elem_id="notice_markdown")
 
     file_upload = gr.File(label="Please upload your paper", file_types=[".pdf"])
-    
 
     save_button = gr.Button(value="Upload PDF", variant="primary")
     with gr.Row():
         with gr.Column():
             output_text_left = gr.Textbox(label="Parsed Paper Output - Model 1", lines=10, interactive=True)
         with gr.Column():
-            output_text_right = gr.Textbox(label="Parsed Paper Output - MOdel 2", lines=10, interactive=True)
+            output_text_right = gr.Textbox(label="Parsed Paper Output - Model 2", lines=10, interactive=True)
 
 
     with gr.Group(elem_id="share-region-named"):
@@ -780,36 +770,15 @@ def build_side_by_side_ui_named(models):
         add_text,
         states + model_selectors + [output_text_left, output_text_right], 
         states + chatbots + [output_text_left, output_text_right] + btn_list   
+    ).then(
+        bot_response_multi,
+        states + [temperature, top_p, max_output_tokens],
+        states + chatbots + btn_list
+    ).then(
+        flash_buttons, 
+        [], 
+        btn_list
     )
-    # .then(
-    #     bot_response_multi,
-    #     states + [temperature, top_p, max_output_tokens],
-    #     states + chatbots + btn_list
-    # ).then(
-    #     flash_buttons, 
-    #     [], 
-    #     btn_list
-    # )
-
-    
-    # save_button.click(
-    # save_uploaded_file_as_pdf, 
-    # inputs=file_upload, 
-    # outputs=output_text_left
-    # ).then(
-    #     add_text,
-    #     states + model_selectors + [output_text_left],
-    #     states + chatbots + [output_text_left] + btn_list
-    # ).then(
-    #     bot_response_multi,
-    #     states + [temperature, top_p, max_output_tokens],
-    #     states + chatbots + btn_list
-    # ).then(
-    #     flash_buttons, 
-    #     [], 
-    #     btn_list
-    # )
-
 
     leftvote_btn.click(
         leftvote_last_response,

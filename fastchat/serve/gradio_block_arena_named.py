@@ -43,7 +43,7 @@ from fastchat.utils import (
     build_logger,
     moderation_filter,
 )
-
+model_selectors = 0
 model_states = [gr.State(None) for _ in range(2)]
 
 def get_api_config(model_name, config_path="api_endpoint.json"):
@@ -305,12 +305,10 @@ def get_LLM_feedback(paper, checklist_df, model):
         checklist_df.loc[index, 'LLM'] = llm
 
         print(f"[{model}][+] Question # {question_number}")
-
     return checklist_df
 
 def save_uploaded_file_as_pdf(uploaded_file): 
     global model_states
-    print(model_states)
     if uploaded_file is None:
         return "No file uploaded."
 
@@ -355,16 +353,13 @@ def save_uploaded_file_as_pdf(uploaded_file):
     check_incomplete_questions(paper["checklist_df"])
     
     # generate output 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future1 = executor.submit(get_LLM_feedback, paper["paper"], paper["checklist_df"], model_states[0])
-        future2 = executor.submit(get_LLM_feedback, paper["paper"], paper["checklist_df"], model_states[1])
+    # model_states
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        future1 = executor.submit(get_LLM_feedback, paper["paper"], paper["checklist_df"], "Checklist-GPT-4o-0513")
+        future2 = executor.submit(get_LLM_feedback, paper["paper"], paper["checklist_df"], "Checklist-GPT-4o-mini")
         answer1 = future1.result()
         answer2 = future2.result()
-    # answer1 = get_LLM_feedback(paper["paper"], paper["checklist_df"], model_states[0])
-    # answer2 = get_LLM_feedback(paper["paper"], paper["checklist_df"], model_states[1])
-    print(answer1['LLM'].tolist())
-    print(answer2['LLM'].tolist())
-    return str(answer1) +"\n\n Make the format better", str(answer2) +"\n\n Make the format better"
+    return answer1, answer2
 
 
 logger = build_logger("gradio_web_server_multi", "gradio_web_server_multi.log")
@@ -465,6 +460,7 @@ def regenerate(state0, state1, request: gr.Request):
 
 
 def clear_history(request: gr.Request):
+    global model_selectors
     logger.info(f"clear_history (named). ip: {get_ip(request)}")
     return (
         [None] * num_sides
@@ -484,7 +480,7 @@ def share_click(state0, state1, model_selector0, model_selector1, request: gr.Re
 
 
 def add_text(state0, state1, model_selector0, model_selector1, text, output_text_left, output_text_right, request: gr.Request):
-
+    global model_selectors
     # ip = get_ip(request)
     # logger.info(f"add_text (named). ip: {ip}. len: {len(text)}")
     states = [state0, state1]
@@ -636,6 +632,7 @@ def flash_buttons():
 
 def build_side_by_side_ui_named(models):
     global model_states
+    global model_selectors
     notice_markdown = f"""
     # ⚔️ [DEMO] LLM-Arena for Checklist Assistant
 
@@ -657,9 +654,9 @@ def build_side_by_side_ui_named(models):
     save_button = gr.Button(value="Upload PDF", variant="primary")
     with gr.Row():
         with gr.Column():
-            output_text_left = gr.Textbox(label="Parsed Paper Output - Model 1", lines=10, interactive=True)
+            output_text_left = gr.Dataframe(label="Parsed Paper Output - Model 1")
         with gr.Column():
-            output_text_right = gr.Textbox(label="Parsed Paper Output - Model 2", lines=10, interactive=True)
+            output_text_right = gr.Dataframe(label="Parsed Paper Output - Model 2")
 
 
     with gr.Group(elem_id="share-region-named"):
@@ -673,7 +670,7 @@ def build_side_by_side_ui_named(models):
                         interactive=True,
                         show_label=False,
                         container=False,
-                    )
+                    ) 
                     
         with gr.Row():
             with gr.Accordion(
@@ -766,19 +763,21 @@ def build_side_by_side_ui_named(models):
         save_uploaded_file_as_pdf, 
         inputs=file_upload, 
         outputs=[output_text_left, output_text_right]  
-    ).then(
-        add_text,
-        states + model_selectors + [output_text_left, output_text_right], 
-        states + chatbots + [output_text_left, output_text_right] + btn_list   
-    ).then(
-        bot_response_multi,
-        states + [temperature, top_p, max_output_tokens],
-        states + chatbots + btn_list
-    ).then(
-        flash_buttons, 
-        [], 
-        btn_list
     )
+    #.then(
+    #     add_text,
+    #     states + model_selectors + [output_text_left, output_text_right], 
+    #     states + chatbots + [output_text_left, output_text_right] + btn_list   
+    # )
+    # .then(
+    #     bot_response_multi,
+    #     states + [temperature, top_p, max_output_tokens],
+    #     states + chatbots + btn_list
+    # ).then(
+    #     flash_buttons, 
+    #     [], 
+    #     btn_list
+    # )
 
     leftvote_btn.click(
         leftvote_last_response,
@@ -832,7 +831,6 @@ function (a, b, c, d) {
 }
 """
     share_btn.click(share_click, states + model_selectors, [], js=share_js)
-
     for i in range(num_sides):
         model_selectors[i].change(
             clear_history, None, states + chatbots + [textbox] + btn_list
